@@ -322,18 +322,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43039263c97648b42b1bcddbd21e7fe3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _maskShader: {fileID: 4800000, guid: 280bb1866e0038b48bf38a7880342a93, type: 3}
   _params:
     Enable: 1
-    MaskParameters:
+    ShapeParameters:
     - Shape: 1
       ColorData:
-        Vertice1: {x: 0.5, y: 0.3}
-        Vertice2: {x: 0.7, y: 0.3}
-        Vertice3: {x: 0.7, y: 0.4}
+        Vertex1: {x: 0.1, y: 0.5}
+        Vertex2: {x: 0.3, y: 0.5}
+        Vertex3: {x: 0.3, y: 0.65}
         Alpha: 1
         BlackLevel: 0
-        WhiteLevel: 1
-  _maskShader: {fileID: 4800000, guid: 280bb1866e0038b48bf38a7880342a93, type: 3}
+        WhiteLevel: 0.086
+    Invert: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

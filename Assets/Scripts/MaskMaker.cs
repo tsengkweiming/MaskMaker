@@ -4,47 +4,44 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
+[System.Serializable]
+public enum Shape
+{
+    Rect,
+    Triangle
+}
+
+[System.Serializable]
+public struct ColorData
+{
+    public Vector2 Vertex1;
+    public Vector2 Vertex2;
+    public Vector2 Vertex3;
+    [Range(0, 1)] public float Alpha;
+    [Range(0, 1)] public float BlackLevel;
+    [Range(0, 1)] public float WhiteLevel;
+}
+
+[System.Serializable]
+public class ShapeParameters
+{
+    public Shape Shape;
+    public ColorData ColorData;
+}
+
+[System.Serializable]
+public class MaskMakerParameters
+{
+    public bool Enable;
+    public List<ShapeParameters> ShapeParameters;
+    [Range(0, 1)] public float Invert;
+}
+
 [RequireComponent(typeof(Camera))]
 public class MaskMaker : MonoBehaviour
 {
-    public enum Type
-    {
-        Gradient,
-        Step
-    }
-    public enum Shape
-    {
-        Rect,
-        Triangle
-    }
-
-    [System.Serializable]
-    public struct ColorData
-    {
-        public Vector2 Vertice1;
-        public Vector2 Vertice2;
-        public Vector2 Vertice3;
-        [Range(0, 1)] public float Alpha;
-        [Range(0, 1)] public float BlackLevel;
-        [Range(0, 1)] public float WhiteLevel;
-    }
-
-    [System.Serializable]
-    public class ShapeParameters
-    {
-        public Shape Shape;
-        public ColorData ColorData;
-    }
-
-    [System.Serializable]
-    public class MaskMakerParameters
-    {
-        public bool Enable;
-        public List<ShapeParameters> MaskParameters;
-    }
-
-    [SerializeField] private MaskMakerParameters _params;
     [SerializeField] private Shader _maskShader;
+    [SerializeField] private MaskMakerParameters _params;
     private Material _maskMaterial;
     private GraphicsBuffer _rectBuffer;
     private GraphicsBuffer _triBuffer;
@@ -66,10 +63,9 @@ public class MaskMaker : MonoBehaviour
 
     private void UpdateData()
     {
-        var rectList = _params.MaskParameters.Where(p => p.Shape == Shape.Rect).ToList();
+        var rectList = _params.ShapeParameters.Where(p => p.Shape == Shape.Rect).ToList();
+        var triList = _params.ShapeParameters.Where(p => p.Shape == Shape.Triangle).ToList();
         SetBuffer(ref _rectBuffer, rectList, "RectMaskBuffer");
-
-        var triList = _params.MaskParameters.Where(p => p.Shape == Shape.Triangle).ToList();
         SetBuffer(ref _triBuffer, triList, "TriMaskBuffer");
     }
 
@@ -98,6 +94,7 @@ public class MaskMaker : MonoBehaviour
 
         _maskMaterial.SetInt("_RectShapeCount",  _rectBuffer?.count ?? 0);
         _maskMaterial.SetInt("_TriShapeCount", _triBuffer?.count ?? 0);
+        _maskMaterial.SetFloat("_Invert", _params.Invert);
         _maskMaterial.SetBuffer("_RectShapeBuffer", _rectBuffer ?? null);
         _maskMaterial.SetBuffer("_TriShapeBuffer", _triBuffer ?? null);
         Graphics.Blit(null, destination, _maskMaterial);
@@ -106,7 +103,9 @@ public class MaskMaker : MonoBehaviour
     private void OnDestroy()
     {
         _rectBuffer?.Release();
+        _rectBuffer = null;
         _triBuffer?.Release();
+        _triBuffer = null;
 
         if (Application.isEditor)
             Material.DestroyImmediate(_maskMaterial);

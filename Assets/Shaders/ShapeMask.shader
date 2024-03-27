@@ -1,9 +1,7 @@
 Shader "Hidden/ShapeMask"
 {
     Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
+    {}
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -34,9 +32,9 @@ Shader "Hidden/ShapeMask"
 
             struct ColorData
             {
-                float2 Vertice1;
-                float2 Vertice2;
-                float2 Vertice3;
+                float2 Vertex1;
+                float2 Vertex2;
+                float2 Vertex3;
                 float Alpha;
                 float BlackLevel;
                 float WhiteLevel;
@@ -48,16 +46,18 @@ Shader "Hidden/ShapeMask"
             StructuredBuffer<ColorData> _TriShapeBuffer;
             int _RectShapeCount;
             int _TriShapeCount;
+            float _Invert;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.uv = v.uv;
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
-
+            
+            //SDF methods from IQ's website https://iquilezles.org/articles/distfunctions2d/
             float sdTriangle(in float2 p, in float2 p0, in float2 p1, in float2 p2)
             {
                 float2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
@@ -87,32 +87,30 @@ Shader "Hidden/ShapeMask"
                 float box = 1;
                 for (int i = 0; i < _RectShapeCount; i++)
                 {
-                    float2 vertex1 = saturate(_RectShapeBuffer[i].Vertice1);
-                    float2 vertex2 = saturate(_RectShapeBuffer[i].Vertice2);
-                    float2 vertex3 = saturate(_RectShapeBuffer[i].Vertice3);
+                    float2 vertex1 = saturate(_RectShapeBuffer[i].Vertex1);
+                    float2 vertex2 = saturate(_RectShapeBuffer[i].Vertex2);
+                    float2 vertex3 = saturate(_RectShapeBuffer[i].Vertex3);
                     float2 edge1 = vertex2 - vertex3;
                     float thickness = length(edge1);
                     float b = sdOrientedBox(IN.uv, vertex1 - edge1 / 2, vertex2 - edge1 / 2, thickness);
                     b = (b - _RectShapeBuffer[i].BlackLevel) / (_RectShapeBuffer[i].WhiteLevel - _RectShapeBuffer[i].BlackLevel);
-                    box *= lerp(1, b, _RectShapeBuffer[i].Alpha);
+                    box *= lerp(1, saturate(b), _RectShapeBuffer[i].Alpha);
                 }
     
                 float tri = 1;
-                for (int i = 0; i < _TriShapeCount; i++)
+                for (int j = 0; j < _TriShapeCount; j++)
                 {
-                    float2 tri_vertex1 = saturate(_TriShapeBuffer[i].Vertice1);
-                    float2 tri_vertex2 = saturate(_TriShapeBuffer[i].Vertice2);
-                    float2 tri_vertex3 = saturate(_TriShapeBuffer[i].Vertice3);
+                    float2 tri_vertex1 = saturate(_TriShapeBuffer[j].Vertex1);
+                    float2 tri_vertex2 = saturate(_TriShapeBuffer[j].Vertex2);
+                    float2 tri_vertex3 = saturate(_TriShapeBuffer[j].Vertex3);
                     float t = sdTriangle(IN.uv, tri_vertex1, tri_vertex2, tri_vertex3);
-                    t = (t - _TriShapeBuffer[i].BlackLevel) / (_TriShapeBuffer[i].WhiteLevel - _TriShapeBuffer[i].BlackLevel);
-                    tri *= lerp(1, t, _TriShapeBuffer[i].Alpha);
+                    t = (t - _TriShapeBuffer[j].BlackLevel) / (_TriShapeBuffer[j].WhiteLevel - _TriShapeBuffer[j].BlackLevel);
+                    tri *= lerp(1, saturate(t), _TriShapeBuffer[j].Alpha);
                 }
     
                 float bg = 1;
                 float4 col = bg - pow(1 - pow(tri * box, 1), 1);
-                
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
+                col = lerp(col, 1 - col, _Invert);
                 return col;
             }
             ENDCG
